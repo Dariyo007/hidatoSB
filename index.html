@@ -1,276 +1,66 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hidato Puzzle</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: Inter, system-ui, Arial; background: #f2f6f8; margin: 0; padding: 20px; text-align: center; }
-    h1 { margin: 6px 0 16px; }
-    .controls { margin-bottom: 14px; }
-    #board { display: grid; gap: 8px; justify-content: center; margin-top: 8px; }
-    .cell { width: 56px; height: 56px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #dcedc8; }
-    .cell.fixed { background: #9fd3c7; font-weight: 700; cursor: default; }
-    .cell input { width: 100%; height: 100%; border: 0; background: transparent; text-align: center; font-size: 18px; font-weight: 700; outline: none; }
-    .cell.correct { background: #c8e6c9; }
-    .cell.wrong { background: #ffd6d6; }
-    .cell.active { outline: 3px solid #2196f3; outline-offset: 2px; }
-    #msg { margin-top: 12px; font-weight: 600; color: #333; }
-    button, select { padding: 6px 8px; margin: 0 6px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hidato Puzzle</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2196f3">
+<style>
+body {
+font-family: Arial, sans-serif;
+text-align: center;
+background-color: #f4f4f4;
+margin: 0;
+padding: 20px;
+}
+h1 { color: #333; }
+.grid {
+display: grid;
+grid-template-columns: repeat(5, 60px);
+gap: 5px;
+justify-content: center;
+margin-top: 20px;
+}
+.cell {
+width: 60px;
+height: 60px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 18px;
+background-color: white;
+border: 1px solid #ccc;
+cursor: pointer;
+}
+.cell.fixed {
+background-color: #ddd;
+font-weight: bold;
+cursor: not-allowed;
+}
+</style>
 </head>
 <body>
-  <div id="container">
-    <h1>Hidato Puzzle</h1>
-    <div class="controls">
-      <label>Grid Size:
-        <select id="gridSize">
-          <option value="5">5×5</option>
-          <option value="6">6×6</option>
-          <option value="7">7×7</option>
-        </select>
-      </label>
-      <label>Difficulty:
-        <select id="difficulty">
-          <option value="easy">Easy</option>
-          <option value="medium" selected>Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </label>
-      <button id="newGame">New Game</button>
-      <button id="hintBtn">Hint</button>
-    </div>
-    <div id="board" aria-label="Hidato board"></div>
-    <div id="msg" role="status" aria-live="polite"></div>
-  </div>
+<h1>Hidato Puzzle</h1>
+<p>Fill in the missing numbers to create a continuous chain!</p>
+<div class="grid" id="grid"></div>
 
-  <script>
-    const boardEl = document.getElementById('board');
-    const newGameBtn = document.getElementById('newGame');
-    const gridSizeEl = document.getElementById('gridSize');
-    const difficultyEl = document.getElementById('difficulty');
-    const hintBtn = document.getElementById('hintBtn');
-    const msgEl = document.getElementById('msg');
 
-    let size = Number(gridSizeEl.value) || 5;
-    let difficulty = difficultyEl.value || 'medium';
-    let solution = [];
-    let puzzle = [];
-    let selectedInput = null;
+<script>
+const size = 5;
+let puzzle = [
+[1, 0, 0, 0, 0],
+[0, 0, 14, 0, 0],
+[0, 0, 0, 0, 0],
+[0, 0, 0, 0, 0],
+[0, 0, 0, 0, 25]
+];
 
-    newGameBtn.addEventListener('click', startGame);
-    gridSizeEl.addEventListener('change', (e) => size = Number(e.target.value));
-    difficultyEl.addEventListener('change', (e) => difficulty = e.target.value);
-    hintBtn.addEventListener('click', giveHint);
 
-    function showMsg(text, t = 2000) {
-      msgEl.textContent = text;
-      if (t) setTimeout(() => { if (msgEl.textContent === text) msgEl.textContent = ''; }, t);
-    }
-
-    function generateSolution(n) {
-      const total = n * n;
-      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-      function shuffle(arr) {
-        for (let i = arr.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [arr[i], arr[j]] = [arr[j], arr[i]];
-        }
-        return arr;
-      }
-      while (true) {
-        const grid = Array.from({ length: n }, () => Array(n).fill(null));
-        const path = [];
-        const sx = Math.floor(Math.random() * n);
-        const sy = Math.floor(Math.random() * n);
-        function backtrack(x, y, num) {
-          grid[y][x] = num;
-          path.push([x, y]);
-          if (num === total) return true;
-          const choices = shuffle(dirs.slice());
-          for (const [dx, dy] of choices) {
-            const nx = x + dx, ny = y + dy;
-            if (nx >= 0 && nx < n && ny >= 0 && ny < n && grid[ny][nx] === null) {
-              if (backtrack(nx, ny, num + 1)) return true;
-            }
-          }
-          grid[y][x] = null;
-          path.pop();
-          return false;
-        }
-        if (backtrack(sx, sy, 1)) {
-          const sol = Array.from({ length: n }, () => Array(n).fill(0));
-          for (let i = 0; i < path.length; i++) {
-            const [x, y] = path[i];
-            sol[y][x] = i + 1;
-          }
-          return sol;
-        }
-      }
-    }
-
-    function buildPuzzleFromSolution(sol, diff) {
-      const n = sol.length;
-      const total = n * n;
-      const revealFraction = diff === 'easy' ? 0.5 : diff === 'medium' ? 0.35 : 0.25;
-      const keep = new Set();
-      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
-        if (sol[r][c] === 1 || sol[r][c] === total) keep.add(`${r},${c}`);
-      }
-      const coords = [];
-      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) coords.push([r, c]);
-      for (let i = coords.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [coords[i], coords[j]] = [coords[j], coords[i]];
-      }
-      const keepCount = Math.max(2, Math.floor(n * n * revealFraction));
-      for (const [r, c] of coords) {
-        if (keep.size >= keepCount) break;
-        keep.add(`${r},${c}`);
-      }
-      const puzzleGrid = Array.from({ length: n }, () => Array(n).fill(null));
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          puzzleGrid[r][c] = keep.has(`${r},${c}`) ? sol[r][c] : null;
-        }
-      }
-      return puzzleGrid;
-    }
-
-    function render() {
-      boardEl.innerHTML = '';
-      boardEl.style.gridTemplateColumns = `repeat(${size}, 56px)`;
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'cell';
-          const val = puzzle[r][c];
-          if (val !== null) {
-            wrapper.classList.add('fixed');
-            wrapper.textContent = val;
-          } else {
-            const input = document.createElement('input');
-            input.inputMode = 'numeric';
-            input.pattern = '[0-9]*';
-            input.type = 'tel';
-            input.dataset.r = r;
-            input.dataset.c = c;
-            input.autocomplete = 'off';
-            input.addEventListener('focus', () => { wrapper.classList.add('active'); selectedInput = input; });
-            input.addEventListener('blur', () => { wrapper.classList.remove('active'); selectedInput = null; });
-            input.addEventListener('input', onInputChange);
-            input.addEventListener('keydown', (ev) => {
-              if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
-            });
-            wrapper.appendChild(input);
-          }
-          boardEl.appendChild(wrapper);
-        }
-      }
-    }
-
-    function onInputChange(e) {
-      const input = e.target;
-      const r = Number(input.dataset.r), c = Number(input.dataset.c);
-      const v = input.value.trim();
-      if (v === '') { markCellNeutral(r, c); return; }
-      const num = Number(v);
-      if (Number.isInteger(num) && num >= 1 && num <= size * size) {
-        if (num === solution[r][c]) {
-          markCellCorrect(input, r, c);
-          checkCompletion();
-        } else {
-          markCellWrong(input);
-        }
-      } else {
-        markCellWrong(input);
-      }
-    }
-
-    function markCellCorrect(input, r, c) {
-      const cellWrapper = input.parentElement;
-      cellWrapper.classList.remove('wrong');
-      cellWrapper.classList.add('correct');
-      input.disabled = true;
-      input.value = solution[r][c];
-      puzzle[r][c] = solution[r][c];
-    }
-
-    function markCellWrong(input) {
-      const cellWrapper = input.parentElement;
-      cellWrapper.classList.remove('correct');
-      cellWrapper.classList.add('wrong');
-    }
-
-    function markCellNeutral(r, c) {
-      const wrapper = boardEl.children[r * size + c];
-      wrapper.classList.remove('wrong', 'correct');
-    }
-
-    document.addEventListener('keydown', (e) => {
-      if (!selectedInput) return;
-      const r = Number(selectedInput.dataset.r), c = Number(selectedInput.dataset.c);
-      let nr = r, nc = c;
-      if (e.key === 'ArrowUp') nr = Math.max(0, r - 1);
-      else if (e.key === 'ArrowDown') nr = Math.min(size - 1, r + 1);
-      else if (e.key === 'ArrowLeft') nc = Math.max(0, c - 1);
-      else if (e.key === 'ArrowRight') nc = Math.min(size - 1, c + 1);
-      else return;
-      e.preventDefault();
-      const targetWrapper = boardEl.children[nr * size + nc];
-      const targetInput = targetWrapper.querySelector('input');
-      if (targetInput) { targetInput.focus(); targetInput.select(); }
-    });
-
-    function giveHint() {
-      let targetInput = selectedInput;
-      if (!targetInput) {
-        outer:
-        for (let r = 0; r < size; r++) {
-          for (let c = 0; c < size; c++) {
-            if (puzzle[r][c] === null) {
-              const wrapper = boardEl.children[r * size + c];
-              targetInput = wrapper.querySelector('input');
-              break outer;
-            }
-          }
-        }
-      }
-      if (!targetInput) { showMsg('No cell to hint'); return; }
-      const r = Number(targetInput.dataset.r), c = Number(targetInput.dataset.c);
-      targetInput.value = solution[r][c];
-      markCellCorrect(targetInput, r, c);
-      showMsg(`Revealed ${solution[r][c]}`);
-      checkCompletion();
-    }
-
-    function checkCompletion() {
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (puzzle[r][c] === null || puzzle[r][c] !== solution[r][c]) return;
-        }
-      }
-      setTimeout(() => {
-        alert('Congratulations — puzzle solved!');
-        if (difficulty === 'easy') difficulty = 'medium';
-        else if (difficulty === 'medium') difficulty = 'hard';
-        difficultyEl.value = difficulty;
-        startGame();
-      }, 250);
-    }
-
-    function startGame() {
-      size = Number(gridSizeEl.value) || 5;
-      difficulty = difficultyEl.value || 'medium';
-      showMsg('Generating puzzle — please wait...');
-      solution = generateSolution(size);
-      puzzle = buildPuzzleFromSolution(solution, difficulty);
-      render();
-      showMsg('Tap a cell to enter numbers. Use arrows to navigate. Hint reveals one cell.');
-    }
-
-    startGame();
-  </script>
-</body>
+function createGrid() {
+const grid = document.getElementById('grid');
+grid.innerHTML = '';
+puzzle.forEach((row, i) => {
+row.forEach((cell, j) => {
 </html>
