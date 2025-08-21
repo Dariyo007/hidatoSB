@@ -1,4 +1,3 @@
-```javascript
 self.addEventListener('install', (event) => {
 event.waitUntil(
 caches.open('hidato-cache').then((cache) => {
