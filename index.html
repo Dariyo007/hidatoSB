@@ -1,535 +1,160 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hidato Puzzle</title>
-<meta name="theme-color" content="#2196f3">
 <style>
-  :root{
-    --cell:60px;
-    --gap:6px;
-    --accent:#1976d2;
-    --muted:#ddd;
-  }
-  body{
-    font-family:system-ui, Arial, sans-serif;
-    margin:0;
-    padding:20px;
-    text-align:center;
-    background:#f6f7f8;
-    color:#222;
-  }
-  h1{ margin:6px 0 0; font-weight:700;}
-  .desc{margin:6px 0 12px;color:#444;}
-  .board-wrap{display:inline-block; padding:12px; background:white; border-radius:10px; box-shadow:0 6px 20px rgba(30,30,30,0.08);}
-  .grid{
-    display:grid;
-    grid-template-columns: repeat(5, var(--cell));
-    gap: var(--gap);
-    padding:12px;
-  }
-  .cell{
-    width:var(--cell); height:var(--cell);
-    display:flex; align-items:center; justify-content:center;
-    background:white; border-radius:6px;
-    border:1px solid #e1e4e8;
-    user-select:none;
-    font-size:18px;
-    box-sizing:border-box;
-    position:relative;
-  }
-  .cell.fixed{
-    background:var(--muted);
-    font-weight:700;
-    cursor:default;
-  }
-  .cell.selected{
-    outline:3px solid var(--accent);
-    outline-offset: -3px;
-    z-index:2;
-  }
-  .cell.invalid{
-    box-shadow: inset 0 0 0 3px rgba(220,20,60,0.15);
-  }
-  .controls{ margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
-  button.btn{
-    background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;
-    box-shadow: 0 2px 6px rgba(25,118,210,0.12);
-  }
-  button.btn.secondary{ background:#eee; color:#222; box-shadow:none; }
-  .status{ margin-top:8px; min-height:20px; color:#444; }
-  /* numpad */
-  .numpad{
-    display:none;
-    position:fixed;
-    left:50%;
-    transform:translateX(-50%);
-    bottom:18px;
-    background:white;
-    border-radius:12px;
-    padding:10px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.12);
-    z-index:1000;
-    width: min(360px, calc(100% - 32px));
-  }
-  .numpad-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
-  .numpad button{ padding:12px 0; font-size:18px; border-radius:8px; cursor:pointer; border:1px solid #ddd; background:#fff; }
-  .numpad .ok{ grid-column:span 3; background:var(--accent); color:#fff; border:none; }
-  /* input preview */
-  .preview{
-    position:fixed; left:50%; transform:translateX(-50%); top:16px; background:#fff; padding:6px 10px; border-radius:8px;
-    box-shadow:0 6px 20px rgba(0,0,0,0.08); font-weight:600; display:none;
-  }
-  .solved{ color:green; font-weight:700; }
-  @media (max-width:600px){
-    :root{ --cell:54px; --gap:6px; }
-  }
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+h1 { color: #333; }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(5, 60px);
+    gap: 5px;
+    justify-content: center;
+    margin-top: 20px;
+}
+.cell {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background-color: white;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+.cell.fixed {
+    background-color: #ddd;
+    font-weight: bold;
+    cursor: not-allowed;
+}
+.cell.selected {
+    border: 2px solid #2196f3;
+}
+.controls {
+    margin: 20px auto;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+button.primary { background-color: #2196f3; color: white; }
+button.secondary { background-color: #e0e0e0; color: #333; }
 </style>
 </head>
 <body>
-  <h1>Hidato Puzzle</h1>
-  <div class="desc">Fill in the missing numbers to create a continuous chain. Click / tap a cell to select. Use arrows and keyboard or the numpad below.</div>
+<h1>Hidato Puzzle</h1>
+<p>Fill in the missing numbers to create a continuous chain. Click/tap to select, use arrow keys to move, and type numbers.</p>
 
-  <div class="board-wrap">
-    <div id="grid" class="grid" role="grid" aria-label="Hidato grid"></div>
-    <div class="controls">
-      <button id="btn-check" class="btn">Check</button>
-      <button id="btn-hint" class="btn secondary">Hint</button>
-      <button id="btn-clear" class="btn secondary">Clear Cell</button>
-      <button id="btn-reset" class="btn secondary">Reset</button>
-    </div>
-    <div class="status" id="status"></div>
-  </div>
+<div class="grid" id="grid"></div>
 
-  <div id="input-preview" class="preview"></div>
-
-  <!-- Numpad (visible on mobile or when forced) -->
-  <div id="numpad" class="numpad" aria-hidden="true">
-    <div class="numpad-grid" id="numpad-grid"></div>
-  </div>
+<div class="controls">
+    <button class="primary" onclick="checkPuzzle()">Check</button>
+    <button class="secondary" onclick="giveHint()">Hint</button>
+    <button class="secondary" onclick="clearCell()">Clear Cell</button>
+    <button class="secondary" onclick="resetPuzzle()">Reset</button>
+</div>
 
 <script>
-/*
-  Single-file Hidato game
-  - Replace puzzleInitial to change the puzzle (0 = empty, non-zero = fixed)
-  - Grid size is inferred from puzzle dimension
-*/
-
-// ----------- Configuration / puzzle -----------
-let puzzleInitial = [
-  [1, 0, 0, 0, 0],
-  [0, 0, 14, 0, 0],
-  [0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 25]
+const size = 5;
+let puzzle = [
+    [1, 0, 0, 0, 0],
+    [0, 0, 14, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 25]
 ];
+let selected = { row: null, col: null };
 
-// copy and runtime structures
-let puzzle = [];
-let fixed = []; // boolean grid
-let size = puzzleInitial.length;
-let selected = null; // [r,c]
-let inputBuffer = ''; // for typed number before commit
-const gridEl = document.getElementById('grid');
-const statusEl = document.getElementById('status');
-const previewEl = document.getElementById('input-preview');
-const numpadEl = document.getElementById('numpad');
-const numpadGrid = document.getElementById('numpad-grid');
-
-function initPuzzle(){
-  size = puzzleInitial.length;
-  puzzle = Array.from({length:size}, (_,r) => Array.from({length:size}, (_,c) => puzzleInitial[r][c] || 0));
-  fixed = Array.from({length:size}, (_,r) => Array.from({length:size}, (_,c) => !!puzzleInitial[r][c]));
-  selected = null;
-  inputBuffer = '';
-  renderGrid();
-  createNumpad();
-  updateStatus('');
-  hidePreview();
-  hideNumpad();
-}
-
-// ----------- Rendering -----------
-function renderGrid(){
-  gridEl.style.gridTemplateColumns = `repeat(${size}, var(--cell))`;
-  gridEl.innerHTML = '';
-  for(let r=0;r<size;r++){
-    for(let c=0;c<size;c++){
-      const val = puzzle[r][c];
-      const div = document.createElement('div');
-      div.className = 'cell';
-      div.setAttribute('data-r', r);
-      div.setAttribute('data-c', c);
-      if(val) div.textContent = val;
-      if(fixed[r][c]) div.classList.add('fixed');
-      if(selected && selected[0]===r && selected[1]===c) div.classList.add('selected');
-      // invalid marking (from live validation) will be applied later
-      div.addEventListener('click', onCellClick.bind(null, r, c));
-      div.addEventListener('touchstart', onCellClick.bind(null, r, c));
-      gridEl.appendChild(div);
-    }
-  }
-  // reflect invalids after render
-  markInvalids();
-}
-
-function onCellClick(r,c){
-  if(fixed[r][c]) {
-    // select fixed cells too (optional)
-    selected = [r,c];
-    inputBuffer = '';
-    renderGrid();
-    hideNumpad();
-    hidePreview();
-    return;
-  }
-  selected = [r,c];
-  inputBuffer = '';
-  renderGrid();
-  if(isMobile()) showNumpad();
-  else showPreview();
-}
-
-// ----------- Keyboard and input handling -----------
-document.addEventListener('keydown', (e) => {
-  if(!selected) {
-    // allow arrow to select first empty cell if none selected
-    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
-      const firstEmpty = findFirstEmpty();
-      if(firstEmpty) { selected = firstEmpty; renderGrid(); showPreview(); }
-    }
-    return;
-  }
-  // movement
-  if(e.key.startsWith('Arrow')) {
-    e.preventDefault();
-    const [r,c] = selected;
-    let nr=r, nc=c;
-    if(e.key==='ArrowUp' && r>0) nr--;
-    if(e.key==='ArrowDown' && r<size-1) nr++;
-    if(e.key==='ArrowLeft' && c>0) nc--;
-    if(e.key==='ArrowRight' && c<size-1) nc++;
-    selected = [nr,nc];
-    inputBuffer = '';
-    renderGrid();
-    showPreview();
-    return;
-  }
-
-  // numeric input handling
-  if(e.key >= '0' && e.key <= '9') {
-    // build buffer (allow multi-digit)
-    inputBuffer += e.key;
-    showPreview();
-    return;
-  }
-
-  if(e.key === 'Backspace') {
-    inputBuffer = inputBuffer.slice(0,-1);
-    showPreview();
-    return;
-  }
-
-  if(e.key === 'Enter') {
-    commitInputBuffer();
-    return;
-  }
-
-  // Delete key to clear
-  if(e.key === 'Delete') {
-    clearSelectedCell();
-    return;
-  }
-
-});
-
-// commit buffer to puzzle (validations applied)
-function commitInputBuffer(){
-  if(!selected) return;
-  const [r,c] = selected;
-  if(fixed[r][c]) { inputBuffer=''; hidePreview(); return; }
-  if(inputBuffer === '') return;
-  const n = parseInt(inputBuffer,10);
-  if(Number.isNaN(n)) return;
-  // prevent duplicates except if overwriting same cell
-  if(!canPlaceNumber(r,c,n)) {
-    updateStatus('Duplicate number or invalid placement', true);
-    flashInvalidCell(r,c);
-    inputBuffer = '';
-    showPreview();
-    return;
-  }
-  puzzle[r][c] = n;
-  inputBuffer = '';
-  renderGrid();
-  updateStatus('');
-  hidePreview();
-  // optional: auto-move to next cell to the right
-}
-
-// check duplicates and immediate adjacency ratio (basic)
-function canPlaceNumber(r,c,n){
-  // duplicate existing number elsewhere
-  for(let i=0;i<size;i++) for(let j=0;j<size;j++){
-    if(i===r && j===c) continue;
-    if(puzzle[i][j] === n) return false;
-  }
-  return true;
-}
-
-function clearSelectedCell(){
-  if(!selected) return;
-  const [r,c] = selected;
-  if(fixed[r][c]) return;
-  puzzle[r][c] = 0;
-  inputBuffer='';
-  renderGrid();
-  updateStatus('');
-  hidePreview();
-}
-
-// ----------- Validation / adjacency / win check -----------
-
-// return true if two coords are neighbors (8-direction)
-function isNeighbor(a,b){
-  const dr = Math.abs(a[0]-b[0]);
-  const dc = Math.abs(a[1]-b[1]);
-  return Math.max(dr,dc) === 1 || (dr===1 && dc===1);
-}
-
-function findCoordsOfNumber(n){
-  for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(puzzle[r][c]===n) return [r,c];
-  return null;
-}
-
-// Mark invalid cells (duplicates or adjacency violations for existing consecutive numbers)
-// Simple rule: for any placed number x, if x+1 exists and is not adjacent -> mark invalid
-function markInvalids(){
-  // clear previous invalid classes
-  const cells = document.querySelectorAll('.cell');
-  cells.forEach(el=>el.classList.remove('invalid'));
-  // duplicates detection
-  const seen = Object.create(null);
-  for(let r=0;r<size;r++) for(let c=0;c<size;c++){
-    const v = puzzle[r][c];
-    if(!v) continue;
-    if(seen[v]) { // mark both
-      const [pr,pc] = seen[v];
-      const el1 = getCellElement(pr,pc);
-      const el2 = getCellElement(r,c);
-      if(el1) el1.classList.add('invalid');
-      if(el2) el2.classList.add('invalid');
-    } else seen[v] = [r,c];
-  }
-  // adjacency check for consecutive numbers present
-  const allNumbers = Object.keys(seen).map(x=>parseInt(x)).sort((a,b)=>a-b);
-  for(let k=0;k<allNumbers.length;k++){
-    const x = allNumbers[k];
-    const nx = x+1;
-    if(seen[nx]) {
-      const a = seen[x], b = seen[nx];
-      if(!isNeighbor(a,b)) {
-        const elA = getCellElement(a[0],a[1]);
-        const elB = getCellElement(b[0],b[1]);
-        if(elA) elA.classList.add('invalid');
-        if(elB) elB.classList.add('invalid');
-      }
-    }
-  }
-}
-
-function getCellElement(r,c){
-  return gridEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-}
-
-function checkWin(){
-  // find max number expected: either the highest fixed/placed number or size*size
-  let maxN = 0;
-  for(let r=0;r<size;r++) for(let c=0;c<size;c++) maxN = Math.max(maxN, puzzle[r][c] || 0);
-  if(maxN === 0) return false;
-  // every number from 1..maxN must exist exactly once and neighbors must be adjacent
-  for(let n=1;n<=maxN;n++){
-    const a = findCoordsOfNumber(n);
-    if(!a) {
-      updateStatus(`Missing number ${n}`, true);
-      return false;
-    }
-    if(n < maxN){
-      const b = findCoordsOfNumber(n+1);
-      if(!b) {
-        updateStatus(`Missing number ${n+1}`, true);
-        return false;
-      }
-      if(!isNeighbor(a,b)){
-        updateStatus(`Numbers ${n} and ${n+1} are not adjacent`, true);
-        markInvalids();
-        return false;
-      }
-    }
-  }
-  // success
-  updateStatus('🎉 Puzzle Solved!', false, true);
-  // show solved highlight
-  markSolved();
-  return true;
-}
-
-function markSolved(){
-  const cells = document.querySelectorAll('.cell');
-  cells.forEach(el=>{
-    el.style.transition = 'transform .25s';
-    el.style.transform = 'translateY(-2px)';
-    setTimeout(()=> el.style.transform = '', 300);
-  });
-  // optional: add solved class
-  statusEl.classList.add('solved');
-}
-
-function updateStatus(msg, isError=false, isSuccess=false){
-  statusEl.textContent = msg;
-  statusEl.style.color = isError ? '#b00020' : (isSuccess ? 'green' : '#444');
-}
-
-// hint: find first missing or adjacency violation and highlight
-function giveHint(){
-  // find smallest missing number between 1..maxFound
-  let maxFound = 0;
-  const present = new Set();
-  for(let r=0;r<size;r++) for(let c=0;c<size;c++){
-    const v = puzzle[r][c];
-    if(v) { present.add(v); maxFound = Math.max(maxFound, v); }
-  }
-  for(let n=1;n<=maxFound;n++){
-    if(!present.has(n)) {
-      updateStatus(`Hint: number ${n} is missing`, true);
-      return;
-    }
-    const a = findCoordsOfNumber(n);
-    const b = findCoordsOfNumber(n+1);
-    if(b && !isNeighbor(a,b)){
-      updateStatus(`Hint: ${n} and ${n+1} should be adjacent`, true);
-      return;
-    }
-  }
-  updateStatus('No direct hints — try filling numbers sequentially from 1.', false);
-}
-
-// flash invalid cell for feedback
-function flashInvalidCell(r,c){
-  const el = getCellElement(r,c);
-  if(!el) return;
-  el.classList.add('invalid');
-  setTimeout(()=> el.classList.remove('invalid'), 900);
-}
-
-// mark invalids initially
-markInvalids();
-
-// ----------- Numpad (mobile) -----------
-function isMobile(){
-  return ('ontouchstart' in window) || window.innerWidth <= 760;
-}
-
-function createNumpad(){
-  numpadGrid.innerHTML = '';
-  // digits 1..9
-  for(let n=1;n<=9;n++){
-    const b = document.createElement('button');
-    b.textContent = String(n);
-    b.addEventListener('click', ()=> {
-      if(!selected) return;
-      inputBuffer += String(n);
-      showPreview();
+function createGrid() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    puzzle.forEach((row, i) => {
+        row.forEach((cell, j) => {
+            const div = document.createElement('div');
+            div.classList.add('cell');
+            if (cell !== 0) {
+                div.textContent = cell;
+                div.classList.add('fixed');
+            }
+            div.addEventListener('click', () => selectCell(i, j));
+            grid.appendChild(div);
+        });
     });
-    numpadGrid.appendChild(b);
-  }
-  // 0 and Clear and OK
-  const b0 = document.createElement('button'); b0.textContent='0';
-  b0.addEventListener('click', ()=> { if(!selected) return; inputBuffer += '0'; showPreview(); });
-  numpadGrid.appendChild(b0);
-
-  const bc = document.createElement('button'); bc.textContent='CLR';
-  bc.addEventListener('click', ()=> { inputBuffer=''; showPreview(); });
-  numpadGrid.appendChild(bc);
-
-  const bok = document.createElement('button');
-  bok.textContent = 'OK';
-  bok.className = 'ok';
-  bok.addEventListener('click', ()=>{
-    commitInputBuffer();
-    hideNumpad();
-  });
-  // ok spans full width in markup: append manually as a full-row button
-  numpadEl.appendChild(bok);
 }
 
-function showNumpad(){
-  if(!numpadEl) return;
-  numpadEl.style.display = 'block';
-  numpadEl.setAttribute('aria-hidden','false');
+function selectCell(row, col) {
+    if (puzzle[row][col] !== 0) return;
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(c => c.classList.remove('selected'));
+    selected = { row, col };
+    const index = row * size + col;
+    cells[index].classList.add('selected');
 }
 
-function hideNumpad(){
-  if(!numpadEl) return;
-  numpadEl.style.display = 'none';
-  numpadEl.setAttribute('aria-hidden','true');
+function handleKey(e) {
+    if (selected.row === null) return;
+    let { row, col } = selected;
+    if (e.key >= '0' && e.key <= '9') {
+        let value = parseInt(e.key);
+        if (value !== 0) updateCell(row, col, value);
+    } else if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        if (e.key === 'ArrowUp' && row > 0) row--;
+        if (e.key === 'ArrowDown' && row < size - 1) row++;
+        if (e.key === 'ArrowLeft' && col > 0) col--;
+        if (e.key === 'ArrowRight' && col < size - 1) col++;
+        selectCell(row, col);
+    }
 }
 
-// preview near top while typing on desktop
-function showPreview(){
-  if(!selected) return;
-  previewEl.style.display = 'block';
-  const [r,c] = selected;
-  previewEl.textContent = `Cell (${r+1},${c+1}) — input: ${inputBuffer || '(empty)'}`;
-  // prevent preview overlapping on mobile small widths; hide if mobile and numpad is visible
-  if(isMobile()) previewEl.style.display = 'none';
-}
-function hidePreview(){ previewEl.style.display='none'; }
-
-// find first empty cell (for keyboard convenience)
-function findFirstEmpty(){
-  for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(!puzzle[r][c] && !fixed[r][c]) return [r,c];
-  return null;
+function updateCell(row, col, value) {
+    puzzle[row][col] = value;
+    createGrid();
+    selectCell(row, col);
 }
 
-// ----------- Buttons ----------
-document.getElementById('btn-reset').addEventListener('click', ()=> {
-  initPuzzle();
-  statusEl.classList.remove('solved');
-});
-document.getElementById('btn-clear').addEventListener('click', ()=> {
-  clearSelectedCell();
-});
-document.getElementById('btn-check').addEventListener('click', ()=> {
-  markInvalids();
-  checkWin();
-});
-document.getElementById('btn-hint').addEventListener('click', ()=> {
-  giveHint();
-});
+function clearCell() {
+    if (selected.row !== null) {
+        puzzle[selected.row][selected.col] = 0;
+        createGrid();
+    }
+}
 
-// clicking outside grid hides numpad and preview
-document.addEventListener('click', (e) => {
-  const inGrid = e.target.closest('.grid') || e.target.closest('.numpad') || e.target.closest('.cell');
-  if(!inGrid){
-    hideNumpad();
-    hidePreview();
-    // do not deselect automatically - keep selection until user selects elsewhere
-  }
-});
+function checkPuzzle() {
+    alert('Check feature to be implemented.');
+}
 
-// touch outside
-document.addEventListener('touchstart', (e) => {
-  const inGrid = e.target.closest('.grid') || e.target.closest('.numpad') || e.target.closest('.cell');
-  if(!inGrid) hideNumpad();
-});
+function giveHint() {
+    alert('Hint feature to be implemented.');
+}
 
-// responsive: show numpad automatically for mobile after selection
-window.addEventListener('resize', ()=>{ if(!isMobile()) hideNumpad(); });
+function resetPuzzle() {
+    puzzle = [
+        [1, 0, 0, 0, 0],
+        [0, 0, 14, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 25]
+    ];
+    createGrid();
+}
 
-// initialize
-initPuzzle();
+document.addEventListener('keydown', handleKey);
+createGrid();
 </script>
 </body>
 </html>
