@@ -8,35 +8,35 @@
 <meta name="theme-color" content="#2196f3">
 <style>
 body {
-font-family: Arial, sans-serif;
-text-align: center;
-background-color: #f4f4f4;
-margin: 0;
-padding: 20px;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 20px;
 }
 h1 { color: #333; }
 .grid {
-display: grid;
-grid-template-columns: repeat(5, 60px);
-gap: 5px;
-justify-content: center;
-margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(5, 60px);
+  gap: 5px;
+  justify-content: center;
+  margin-top: 20px;
 }
 .cell {
-width: 60px;
-height: 60px;
-display: flex;
-align-items: center;
-justify-content: center;
-font-size: 18px;
-background-color: white;
-border: 1px solid #ccc;
-cursor: pointer;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background-color: white;
+  border: 1px solid #ccc;
+  cursor: pointer;
 }
 .cell.fixed {
-background-color: #ddd;
-font-weight: bold;
-cursor: not-allowed;
+  background-color: #ddd;
+  font-weight: bold;
+  cursor: not-allowed;
 }
 </style>
 </head>
@@ -45,21 +45,41 @@ cursor: not-allowed;
 <p>Fill in the missing numbers to create a continuous chain!</p>
 <div class="grid" id="grid"></div>
 
-
 <script>
 const size = 5;
 let puzzle = [
-[1, 0, 0, 0, 0],
-[0, 0, 14, 0, 0],
-[0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0],
-[0, 0, 0, 0, 25]
+  [1, 0, 0, 0, 0],
+  [0, 0, 14, 0, 0],
+  [0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 25]
 ];
 
-
 function createGrid() {
-const grid = document.getElementById('grid');
-grid.innerHTML = '';
-puzzle.forEach((row, i) => {
-row.forEach((cell, j) => {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  puzzle.forEach((row, i) => {
+    row.forEach((cell, j) => {
+      const div = document.createElement('div');
+      div.className = 'cell';
+      if (cell !== 0) {
+        div.textContent = cell;
+        div.classList.add('fixed');
+      } else {
+        div.addEventListener('click', () => {
+          let num = prompt('Enter a number:');
+          if (num && !isNaN(num)) {
+            puzzle[i][j] = parseInt(num, 10);
+            createGrid();
+          }
+        });
+      }
+      grid.appendChild(div);
+    });
+  });
+}
+
+createGrid();
+</script>
+</body>
 </html>
